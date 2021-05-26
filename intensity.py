@@ -19,7 +19,7 @@ def collect_args():
     parser.add_argument(
         'dir', help='path to the directory where files matching \'root\' will be passed into program')
     parser.add_argument(
-        'root', help='root name of files whose sums will be averaged over')
+        'root', help='root name of files whose sums will be averaged over (case-sensitive)')
     parser.add_argument('row_start', type=int,
                         help='starting row, must be in [1,row_end]')
     parser.add_argument(
@@ -201,6 +201,7 @@ def compute_avg_intensities(args):
 
         # skip those not matching root (case-sensitive check here)
         if not f.name.startswith(args.root):
+            print("Skipping %s in %s" % (f.name, args.dir))
             continue
 
         # if we haven't done second check, do it then say we have
@@ -209,11 +210,14 @@ def compute_avg_intensities(args):
             done_check = True
 
         # compute intensities for match file, update the shape (in case of 1st match file), or just set again to itself (following), save them
+        print("Computing intensities for %s in %s" % (f.name, args.dir))
         intensities, shape = compute_img_intensities(f.name, args, shape)
         dir_intensities.append(intensities)
 
     # stack saved intensities into matrix, then average them for each column in the matrix
     # note, this is independent of with whether we are summing by rows/columns in ROI
+    print("-----\nComputing mean intensities for %d files" %
+          (len(dir_intensities)))
     avgs = np.mean(np.array(dir_intensities), axis=0)
     return avgs
 
@@ -255,6 +259,8 @@ def main():
     """
 
     args = collect_args()
+    print("Location Parametrs:\ndir=%s\nroot=%s\n\nROI Parameters:\nrows=[%d,%d]\ncolumns=[%d,%d]\n\nComputation Parameters:\nsum type=%s\nsave to=%s\n" % (
+        args.dir, args.root, args.row_start, args.row_end, args.col_start, args.col_end, args.sum, args.out))
     prelim_check_args(args)
     avgs = compute_avg_intensities(args)
     save_avgs(avgs, args)
