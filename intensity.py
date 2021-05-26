@@ -82,6 +82,8 @@ def second_check_args(fname, args):
     ------
     ValueError
         If any of conditions 1-2 are not met. An appropriate error message is included.
+    FileNotFoundError
+        If a path to an image does not exist
     """
 
     # get full path to image, load it into Numpy array - will just be comparing its shape ROI ends
@@ -140,8 +142,10 @@ def compute_img_intensities(fname, args, shape):
 
     Raises
     ------
-    ValueError
+    AssertionError
         If the image stored at `fname` in `args.dir` does not have shape `shape` (for non `None` `shape`).
+    FileNotFoundError
+        If a path to an image does not exist
     """
 
     # get full path to image, load it into Numpy array
@@ -150,13 +154,13 @@ def compute_img_intensities(fname, args, shape):
 
     # save its shape for return, but first check if its num rows, num cols match required
     curr_shape = img.shape
-    if shape is not None and curr_shape[:2] != shape[:2]:
-        raise ValueError('Image %s in %s is required to have %d rows, %d columns' % (
-            fname, args.dir, shape[0], shape[1]))
+    assert shape is None or curr_shape[:2] == shape[:2], 'Image %s (rows=%d, cols=%d) in %s does not match %d rows, %d columns from prev. files' % (
+        fname, curr_shape[0], curr_shape[1], args.dir, shape[0], shape[1])
 
     # remove extra channels if theres a 3rd dimension in our image (that means its being stored as color image)
     if len(img.shape) > 2:
-        print("%s has %d color channels, using only the first" % (fname, img.shape[2]))
+        print("%s has %d color channels, using only the first" %
+              (fname, img.shape[2]))
         img = rmv_extra_channels(img)
 
     # only get ROI, sum over appropriate axis
@@ -182,7 +186,9 @@ def compute_avg_intensities(args):
 
     Raises
     ------
-    ValueError
+    AssertionError
+        See `compute_img_intensities()`
+    FileNotFoundError
         See `compute_img_intensities()`
     """
 
@@ -270,9 +276,12 @@ def main():
         save_avgs(avgs, args)
     except ValueError as ve:
         print("Argument error: %s\nFixes: check ROI, sum type arguments" % (str(ve)))
+    except AssertionError as ae:
+        print("Data error: %s\nFixes: make sure all of your files have the same number of rows, columns" % (str(ae)))
     except FileNotFoundError as fe:
         print("Path / Directory error:%s\nFixes: check dir, out paths (need directory of output file to exist)" % (str(fe)))
     print("-" * 100)
+
 
 if __name__ == '__main__':
     main()
