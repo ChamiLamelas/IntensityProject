@@ -18,7 +18,7 @@ To ensure that the images you will be passing in are readable by `PIL`, open a t
 ```
 python -m PIL
 ```
-Make sure that the file types you are interested in have `open` listed right of `Features:`. For example, BMP, JPEG, PNG, and TIFF file formats all have this property.
+Make sure that the file types you are interested in have `open` listed right of `Features:` in the command's displayed output. For example, BMP, JPEG, PNG, and TIFF file formats all have this property.
 
 You can also automate multiple commands (and to make editing parameters easier) by running a batch file if you're on Windows. `experiments.bat` is an example.
 
