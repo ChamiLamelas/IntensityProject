@@ -8,6 +8,11 @@
     pip install pandas
     pip install pillow
     ```
+    You can check that everything has been installed properly, with the following command:
+    ```
+    pip list
+    ```
+    Make sure that entries for `numpy`, `pandas`, and `Pillow` appear there.
 
 ## How to Use
 Once you have downloaded `intensity.py`. Navigate to its directory in a terminal. Then, type:
