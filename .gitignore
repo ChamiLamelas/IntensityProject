@@ -2,6 +2,7 @@
 data1/
 data2/
 outputs/
+test.bat
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

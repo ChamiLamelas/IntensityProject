@@ -62,7 +62,7 @@ def prelim_check_args(args):
             args.col_start, args.col_end))
     if args.sum not in {'r', 'c'}:
         raise ValueError(
-            '%s is not a valid input, must be \'r\' for rows or \'c\' for columns' % (args.sum))
+            '\'%s\' is not a valid input, must be \'r\' for rows or \'c\' for columns' % (args.sum))
 
 
 def second_check_args(fname, args):
@@ -216,7 +216,7 @@ def compute_avg_intensities(args):
 
     # stack saved intensities into matrix, then average them for each column in the matrix
     # note, this is independent of with whether we are summing by rows/columns in ROI
-    print("-----\nComputing mean intensities for %d files" %
+    print("\nComputing mean intensities for %d files" %
           (len(dir_intensities)))
     avgs = np.mean(np.array(dir_intensities), axis=0)
     return avgs
@@ -256,15 +256,22 @@ def save_avgs(avgs, args):
 def main():
     """
     Main function: collects arguments, conducts preliminary check, computes average intensities and saves them.
+    Errors are printed to console as either Argument errors or 
     """
 
-    args = collect_args()
-    print("Location Parametrs:\ndir=%s\nroot=%s\n\nROI Parameters:\nrows=[%d,%d]\ncolumns=[%d,%d]\n\nComputation Parameters:\nsum type=%s\nsave to=%s\n" % (
-        args.dir, args.root, args.row_start, args.row_end, args.col_start, args.col_end, args.sum, args.out))
-    prelim_check_args(args)
-    avgs = compute_avg_intensities(args)
-    save_avgs(avgs, args)
-
+    print("-" * 100)
+    try:
+        args = collect_args()
+        print("Location Arguments:\ndir=%s\nroot=%s\nout=%s\n\nROI Arguments:\nrows=[%d,%d]\ncolumns=[%d,%d]\n\nComputation Arguments:\nsum type=%s\n" % (
+            args.dir, args.root, args.out, args.row_start, args.row_end, args.col_start, args.col_end, args.sum))
+        prelim_check_args(args)
+        avgs = compute_avg_intensities(args)
+        save_avgs(avgs, args)
+    except ValueError as ve:
+        print("Argument error: %s\nFixes: check ROI, sum type arguments" % (str(ve)))
+    except FileNotFoundError as fe:
+        print("Path / Directory error:%s\nFixes: check dir, out paths (need directory of output file to exist)" % (str(fe)))
+    print("-" * 100)
 
 if __name__ == '__main__':
     main()
