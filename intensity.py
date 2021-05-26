@@ -148,14 +148,15 @@ def compute_img_intensities(fname, args, shape):
     fp = os.path.join(args.dir, fname)
     img = np.asarray(Image.open(fp))
 
-    # save its shape for return, but first check if it matches required shape (if ther eis one)
+    # save its shape for return, but first check if its num rows, num cols match required
     curr_shape = img.shape
-    if shape is not None and curr_shape != shape:
+    if shape is not None and curr_shape[:2] != shape[:2]:
         raise ValueError('Image %s in %s is required to have %d rows, %d columns' % (
             fname, args.dir, shape[0], shape[1]))
 
     # remove extra channels if theres a 3rd dimension in our image (that means its being stored as color image)
     if len(img.shape) > 2:
+        print("%s has %d color channels, using only the first" % (fname, img.shape[2]))
         img = rmv_extra_channels(img)
 
     # only get ROI, sum over appropriate axis
@@ -193,7 +194,7 @@ def compute_avg_intensities(args):
 
     # shape each image needs to be, starts as unknown - first set with first files shape
     # then it is compared with each following file in compute_img_intensities
-    # it is then updated to the shape of each image (which if no error, will be the same for each one)
+    # it is then updated to the shape of each image (which if no error, will have the same 1st 2 dims for each one)
     # allows for cleaner code to just do the update each time instead of splitting condition for 1st file
     shape = None
 
