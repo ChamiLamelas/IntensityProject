@@ -14,6 +14,8 @@
     ```
     Make sure that entries for `numpy`, `pandas`, and `Pillow` appear there.
 
+    Or, if you're on Windows, just download and run `dependencies.bat`.
+
 ## How to Use
 Once you have downloaded `intensity.py`. Navigate to its directory in a terminal. Then, type:
 ```
