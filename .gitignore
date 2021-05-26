@@ -4,6 +4,7 @@ data2/
 data3/
 outputs/
 test.bat
+docgen.bat
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

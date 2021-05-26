@@ -47,7 +47,7 @@ def collect_args():
     parser.add_argument(
         &#39;dir&#39;, help=&#39;path to the directory where files matching \&#39;root\&#39; will be passed into program&#39;)
     parser.add_argument(
-        &#39;root&#39;, help=&#39;root name of files whose sums will be averaged over&#39;)
+        &#39;root&#39;, help=&#39;root name of files whose sums will be averaged over (case-sensitive)&#39;)
     parser.add_argument(&#39;row_start&#39;, type=int,
                         help=&#39;starting row, must be in [1,row_end]&#39;)
     parser.add_argument(
@@ -90,7 +90,7 @@ def prelim_check_args(args):
             args.col_start, args.col_end))
     if args.sum not in {&#39;r&#39;, &#39;c&#39;}:
         raise ValueError(
-            &#39;%s is not a valid input, must be \&#39;r\&#39; for rows or \&#39;c\&#39; for columns&#39; % (args.sum))
+            &#39;\&#39;%s\&#39; is not a valid input, must be \&#39;r\&#39; for rows or \&#39;c\&#39; for columns&#39; % (args.sum))
 
 
 def second_check_args(fname, args):
@@ -110,10 +110,14 @@ def second_check_args(fname, args):
     ------
     ValueError
         If any of conditions 1-2 are not met. An appropriate error message is included.
+    FileNotFoundError
+        If a path to an image does not exist
     &#34;&#34;&#34;
 
+    # get full path to image, load it into Numpy array - will just be comparing its shape ROI ends
     fp = os.path.join(args.dir, fname)
     img = np.asarray(Image.open(fp))
+
     if args.row_end &gt; img.shape[0]:
         raise ValueError(&#39;row_end=%d is not in [row_start,number of rows in image=%d]&#39; % (
             args.row_end, img.shape[0]))
@@ -166,20 +170,31 @@ def compute_img_intensities(fname, args, shape):
 
     Raises
     ------
-    ValueError
+    AssertionError
         If the image stored at `fname` in `args.dir` does not have shape `shape` (for non `None` `shape`).
+    FileNotFoundError
+        If a path to an image does not exist
     &#34;&#34;&#34;
 
+    # get full path to image, load it into Numpy array
     fp = os.path.join(args.dir, fname)
     img = np.asarray(Image.open(fp))
+
+    # save its shape for return, but first check if its num rows, num cols match required
     curr_shape = img.shape
-    if curr_shape != shape:
-        raise ValueError(&#39;Image %s in %s is required to have %d rows, %d columns&#39; % (
-            fname, args.dir, shape[0], shape[1]))
+    assert shape is None or curr_shape[:2] == shape[:2], &#39;Image %s (rows=%d, cols=%d) in %s does not match %d rows, %d columns from prev. files&#39; % (
+        fname, curr_shape[0], curr_shape[1], args.dir, shape[0], shape[1])
+
+    # remove extra channels if theres a 3rd dimension in our image (that means its being stored as color image)
     if len(img.shape) &gt; 2:
+        print(&#34;%s has %d color channels, using only the first&#34; %
+              (fname, img.shape[2]))
         img = rmv_extra_channels(img)
+
+    # only get ROI, sum over appropriate axis
     img = img[args.row_start-1:args.row_end, args.col_start-1:args.col_end]
     intensities = np.sum(img, axis=0 if args.sum == &#39;r&#39; else 1)
+
     return intensities, curr_shape
 
 
@@ -199,21 +214,45 @@ def compute_avg_intensities(args):
 
     Raises
     ------
-    ValueError
+    AssertionError
+        See `compute_img_intensities()`
+    FileNotFoundError
         See `compute_img_intensities()`
     &#34;&#34;&#34;
 
+    # will collect intensities computed from each checked file in dir
     dir_intensities = []
+
+    # will do second check using first matching file, then don&#39;t need to
     done_check = False
+
+    # shape each image needs to be, starts as unknown - first set with first files shape
+    # then it is compared with each following file in compute_img_intensities
+    # it is then updated to the shape of each image (which if no error, will have the same 1st 2 dims for each one)
+    # allows for cleaner code to just do the update each time instead of splitting condition for 1st file
     shape = None
+
     for f in os.scandir(args.dir):
+
+        # skip those not matching root (case-sensitive check here)
         if not f.name.startswith(args.root):
+            print(&#34;Skipping %s in %s&#34; % (f.name, args.dir))
             continue
+
+        # if we haven&#39;t done second check, do it then say we have
         if not done_check:
             second_check_args(f.name, args)
             done_check = True
+
+        # compute intensities for match file, update the shape (in case of 1st match file), or just set again to itself (following), save them
+        print(&#34;Computing intensities for %s in %s&#34; % (f.name, args.dir))
         intensities, shape = compute_img_intensities(f.name, args, shape)
         dir_intensities.append(intensities)
+
+    # stack saved intensities into matrix, then average them for each column in the matrix
+    # note, this is independent of with whether we are summing by rows/columns in ROI
+    print(&#34;\nComputing mean intensities for %d files&#34; %
+          (len(dir_intensities)))
     avgs = np.mean(np.array(dir_intensities), axis=0)
     return avgs
 
@@ -232,12 +271,19 @@ def save_avgs(avgs, args):
         Namespace of arguments returned by `collect_args()`
     &#34;&#34;&#34;
 
+    # going to build a DataFrame with 1 column of averages and an index for easy CSV writing
+
+    # step 1: make avgs into column vector
     avgs = np.reshape(avgs, (avgs.shape[0], -1))
+
+    # step 2: index is columns if we summed over rows, and index is rows if we summed over columns
     if args.sum == &#39;r&#39;:
         idx = pd.Index(data=range(
             args.col_start, args.col_end+1), name=&#39;column&#39;)
     else:
         idx = pd.Index(data=range(args.row_start, args.row_end+1), name=&#39;row&#39;)
+
+    # step 3: with column name, put together DF and write to CSV
     df = pd.DataFrame(avgs, index=idx, columns=[&#39;average_intensity&#39;])
     df.to_csv(args.out)
 
@@ -245,12 +291,25 @@ def save_avgs(avgs, args):
 def main():
     &#34;&#34;&#34;
     Main function: collects arguments, conducts preliminary check, computes average intensities and saves them.
+    Errors are printed to console as either Argument errors or 
     &#34;&#34;&#34;
 
-    args = collect_args()
-    prelim_check_args(args)
-    avgs = compute_avg_intensities(args)
-    save_avgs(avgs, args)
+    print(&#34;-&#34; * 100)
+    try:
+        args = collect_args()
+        print(&#34;Location Arguments:\ndir=%s\nroot=%s\nout=%s\n\nROI Arguments:\nrows=[%d,%d]\ncolumns=[%d,%d]\n\nComputation Arguments:\nsum type=%s\n&#34; % (
+            args.dir, args.root, args.out, args.row_start, args.row_end, args.col_start, args.col_end, args.sum))
+        prelim_check_args(args)
+        avgs = compute_avg_intensities(args)
+        save_avgs(avgs, args)
+    except ValueError as ve:
+        print(&#34;Argument error: %s\nFixes: check ROI, sum type arguments&#34; % (str(ve)))
+    except AssertionError as ae:
+        print(&#34;Data error: %s\nFixes: make sure all of your files have the same number of rows, columns&#34; % (str(ae)))
+    except FileNotFoundError as fe:
+        print(&#34;Path / Directory error:%s\nFixes: check dir, out paths (need directory of output file to exist)&#34; % (str(fe)))
+    print(&#34;-&#34; * 100)
+
 
 if __name__ == &#39;__main__&#39;:
     main()</code></pre>
@@ -290,7 +349,7 @@ if __name__ == &#39;__main__&#39;:
     parser.add_argument(
         &#39;dir&#39;, help=&#39;path to the directory where files matching \&#39;root\&#39; will be passed into program&#39;)
     parser.add_argument(
-        &#39;root&#39;, help=&#39;root name of files whose sums will be averaged over&#39;)
+        &#39;root&#39;, help=&#39;root name of files whose sums will be averaged over (case-sensitive)&#39;)
     parser.add_argument(&#39;row_start&#39;, type=int,
                         help=&#39;starting row, must be in [1,row_end]&#39;)
     parser.add_argument(
@@ -324,7 +383,9 @@ if __name__ == &#39;__main__&#39;:
 </dl>
 <h2 id="raises">Raises</h2>
 <dl>
-<dt><code>ValueError</code></dt>
+<dt><code>AssertionError</code></dt>
+<dd>See <code><a title="intensity.compute_img_intensities" href="#intensity.compute_img_intensities">compute_img_intensities()</a></code></dd>
+<dt><code>FileNotFoundError</code></dt>
 <dd>See <code><a title="intensity.compute_img_intensities" href="#intensity.compute_img_intensities">compute_img_intensities()</a></code></dd>
 </dl></div>
 <details class="source">
@@ -347,21 +408,45 @@ if __name__ == &#39;__main__&#39;:
 
     Raises
     ------
-    ValueError
+    AssertionError
+        See `compute_img_intensities()`
+    FileNotFoundError
         See `compute_img_intensities()`
     &#34;&#34;&#34;
 
+    # will collect intensities computed from each checked file in dir
     dir_intensities = []
+
+    # will do second check using first matching file, then don&#39;t need to
     done_check = False
+
+    # shape each image needs to be, starts as unknown - first set with first files shape
+    # then it is compared with each following file in compute_img_intensities
+    # it is then updated to the shape of each image (which if no error, will have the same 1st 2 dims for each one)
+    # allows for cleaner code to just do the update each time instead of splitting condition for 1st file
     shape = None
+
     for f in os.scandir(args.dir):
+
+        # skip those not matching root (case-sensitive check here)
         if not f.name.startswith(args.root):
+            print(&#34;Skipping %s in %s&#34; % (f.name, args.dir))
             continue
+
+        # if we haven&#39;t done second check, do it then say we have
         if not done_check:
             second_check_args(f.name, args)
             done_check = True
+
+        # compute intensities for match file, update the shape (in case of 1st match file), or just set again to itself (following), save them
+        print(&#34;Computing intensities for %s in %s&#34; % (f.name, args.dir))
         intensities, shape = compute_img_intensities(f.name, args, shape)
         dir_intensities.append(intensities)
+
+    # stack saved intensities into matrix, then average them for each column in the matrix
+    # note, this is independent of with whether we are summing by rows/columns in ROI
+    print(&#34;\nComputing mean intensities for %d files&#34; %
+          (len(dir_intensities)))
     avgs = np.mean(np.array(dir_intensities), axis=0)
     return avgs</code></pre>
 </details>
@@ -389,8 +474,10 @@ if __name__ == &#39;__main__&#39;:
 </dl>
 <h2 id="raises">Raises</h2>
 <dl>
-<dt><code>ValueError</code></dt>
+<dt><code>AssertionError</code></dt>
 <dd>If the image stored at <code>fname</code> in <code>args.dir</code> does not have shape <code>shape</code> (for non <code>None</code> <code>shape</code>).</dd>
+<dt><code>FileNotFoundError</code></dt>
+<dd>If a path to an image does not exist</dd>
 </dl></div>
 <details class="source">
 <summary>
@@ -418,20 +505,31 @@ if __name__ == &#39;__main__&#39;:
 
     Raises
     ------
-    ValueError
+    AssertionError
         If the image stored at `fname` in `args.dir` does not have shape `shape` (for non `None` `shape`).
+    FileNotFoundError
+        If a path to an image does not exist
     &#34;&#34;&#34;
 
+    # get full path to image, load it into Numpy array
     fp = os.path.join(args.dir, fname)
     img = np.asarray(Image.open(fp))
+
+    # save its shape for return, but first check if its num rows, num cols match required
     curr_shape = img.shape
-    if curr_shape != shape:
-        raise ValueError(&#39;Image %s in %s is required to have %d rows, %d columns&#39; % (
-            fname, args.dir, shape[0], shape[1]))
+    assert shape is None or curr_shape[:2] == shape[:2], &#39;Image %s (rows=%d, cols=%d) in %s does not match %d rows, %d columns from prev. files&#39; % (
+        fname, curr_shape[0], curr_shape[1], args.dir, shape[0], shape[1])
+
+    # remove extra channels if theres a 3rd dimension in our image (that means its being stored as color image)
     if len(img.shape) &gt; 2:
+        print(&#34;%s has %d color channels, using only the first&#34; %
+              (fname, img.shape[2]))
         img = rmv_extra_channels(img)
+
+    # only get ROI, sum over appropriate axis
     img = img[args.row_start-1:args.row_end, args.col_start-1:args.col_end]
     intensities = np.sum(img, axis=0 if args.sum == &#39;r&#39; else 1)
+
     return intensities, curr_shape</code></pre>
 </details>
 </dd>
@@ -439,7 +537,8 @@ if __name__ == &#39;__main__&#39;:
 <span>def <span class="ident">main</span></span>(<span>)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Main function: collects arguments, conducts preliminary check, computes average intensities and saves them.</p></div>
+<div class="desc"><p>Main function: collects arguments, conducts preliminary check, computes average intensities and saves them.
+Errors are printed to console as either Argument errors or</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
@@ -447,12 +546,24 @@ if __name__ == &#39;__main__&#39;:
 <pre><code class="python">def main():
     &#34;&#34;&#34;
     Main function: collects arguments, conducts preliminary check, computes average intensities and saves them.
+    Errors are printed to console as either Argument errors or 
     &#34;&#34;&#34;
 
-    args = collect_args()
-    prelim_check_args(args)
-    avgs = compute_avg_intensities(args)
-    save_avgs(avgs, args)</code></pre>
+    print(&#34;-&#34; * 100)
+    try:
+        args = collect_args()
+        print(&#34;Location Arguments:\ndir=%s\nroot=%s\nout=%s\n\nROI Arguments:\nrows=[%d,%d]\ncolumns=[%d,%d]\n\nComputation Arguments:\nsum type=%s\n&#34; % (
+            args.dir, args.root, args.out, args.row_start, args.row_end, args.col_start, args.col_end, args.sum))
+        prelim_check_args(args)
+        avgs = compute_avg_intensities(args)
+        save_avgs(avgs, args)
+    except ValueError as ve:
+        print(&#34;Argument error: %s\nFixes: check ROI, sum type arguments&#34; % (str(ve)))
+    except AssertionError as ae:
+        print(&#34;Data error: %s\nFixes: make sure all of your files have the same number of rows, columns&#34; % (str(ae)))
+    except FileNotFoundError as fe:
+        print(&#34;Path / Directory error:%s\nFixes: check dir, out paths (need directory of output file to exist)&#34; % (str(fe)))
+    print(&#34;-&#34; * 100)</code></pre>
 </details>
 </dd>
 <dt id="intensity.prelim_check_args"><code class="name flex">
@@ -503,7 +614,7 @@ if __name__ == &#39;__main__&#39;:
             args.col_start, args.col_end))
     if args.sum not in {&#39;r&#39;, &#39;c&#39;}:
         raise ValueError(
-            &#39;%s is not a valid input, must be \&#39;r\&#39; for rows or \&#39;c\&#39; for columns&#39; % (args.sum))</code></pre>
+            &#39;\&#39;%s\&#39; is not a valid input, must be \&#39;r\&#39; for rows or \&#39;c\&#39; for columns&#39; % (args.sum))</code></pre>
 </details>
 </dd>
 <dt id="intensity.rmv_extra_channels"><code class="name flex">
@@ -579,12 +690,19 @@ if __name__ == &#39;__main__&#39;:
         Namespace of arguments returned by `collect_args()`
     &#34;&#34;&#34;
 
+    # going to build a DataFrame with 1 column of averages and an index for easy CSV writing
+
+    # step 1: make avgs into column vector
     avgs = np.reshape(avgs, (avgs.shape[0], -1))
+
+    # step 2: index is columns if we summed over rows, and index is rows if we summed over columns
     if args.sum == &#39;r&#39;:
         idx = pd.Index(data=range(
             args.col_start, args.col_end+1), name=&#39;column&#39;)
     else:
         idx = pd.Index(data=range(args.row_start, args.row_end+1), name=&#39;row&#39;)
+
+    # step 3: with column name, put together DF and write to CSV
     df = pd.DataFrame(avgs, index=idx, columns=[&#39;average_intensity&#39;])
     df.to_csv(args.out)</code></pre>
 </details>
@@ -607,6 +725,8 @@ if __name__ == &#39;__main__&#39;:
 <dl>
 <dt><code>ValueError</code></dt>
 <dd>If any of conditions 1-2 are not met. An appropriate error message is included.</dd>
+<dt><code>FileNotFoundError</code></dt>
+<dd>If a path to an image does not exist</dd>
 </dl></div>
 <details class="source">
 <summary>
@@ -629,10 +749,14 @@ if __name__ == &#39;__main__&#39;:
     ------
     ValueError
         If any of conditions 1-2 are not met. An appropriate error message is included.
+    FileNotFoundError
+        If a path to an image does not exist
     &#34;&#34;&#34;
 
+    # get full path to image, load it into Numpy array - will just be comparing its shape ROI ends
     fp = os.path.join(args.dir, fname)
     img = np.asarray(Image.open(fp))
+
     if args.row_end &gt; img.shape[0]:
         raise ValueError(&#39;row_end=%d is not in [row_start,number of rows in image=%d]&#39; % (
             args.row_end, img.shape[0]))
