@@ -84,8 +84,10 @@ def second_check_args(fname, args):
         If any of conditions 1-2 are not met. An appropriate error message is included.
     """
 
+    # get full path to image, load it into Numpy array - will just be comparing its shape ROI ends
     fp = os.path.join(args.dir, fname)
     img = np.asarray(Image.open(fp))
+
     if args.row_end > img.shape[0]:
         raise ValueError('row_end=%d is not in [row_start,number of rows in image=%d]' % (
             args.row_end, img.shape[0]))
@@ -142,16 +144,24 @@ def compute_img_intensities(fname, args, shape):
         If the image stored at `fname` in `args.dir` does not have shape `shape` (for non `None` `shape`).
     """
 
+    # get full path to image, load it into Numpy array
     fp = os.path.join(args.dir, fname)
     img = np.asarray(Image.open(fp))
+
+    # save its shape for return, but first check if it matches required shape (if ther eis one)
     curr_shape = img.shape
-    if curr_shape != shape:
+    if shape is not None and curr_shape != shape:
         raise ValueError('Image %s in %s is required to have %d rows, %d columns' % (
             fname, args.dir, shape[0], shape[1]))
+
+    # remove extra channels if theres a 3rd dimension in our image (that means its being stored as color image)
     if len(img.shape) > 2:
         img = rmv_extra_channels(img)
+
+    # only get ROI, sum over appropriate axis
     img = img[args.row_start-1:args.row_end, args.col_start-1:args.col_end]
     intensities = np.sum(img, axis=0 if args.sum == 'r' else 1)
+
     return intensities, curr_shape
 
 
@@ -175,17 +185,35 @@ def compute_avg_intensities(args):
         See `compute_img_intensities()`
     """
 
+    # will collect intensities computed from each checked file in dir
     dir_intensities = []
+
+    # will do second check using first matching file, then don't need to
     done_check = False
+
+    # shape each image needs to be, starts as unknown - first set with first files shape
+    # then it is compared with each following file in compute_img_intensities
+    # it is then updated to the shape of each image (which if no error, will be the same for each one)
+    # allows for cleaner code to just do the update each time instead of splitting condition for 1st file
     shape = None
+
     for f in os.scandir(args.dir):
+
+        # skip those not matching root (case-sensitive check here)
         if not f.name.startswith(args.root):
             continue
+
+        # if we haven't done second check, do it then say we have
         if not done_check:
             second_check_args(f.name, args)
             done_check = True
+
+        # compute intensities for match file, update the shape (in case of 1st match file), or just set again to itself (following), save them
         intensities, shape = compute_img_intensities(f.name, args, shape)
         dir_intensities.append(intensities)
+
+    # stack saved intensities into matrix, then average them for each column in the matrix
+    # note, this is independent of with whether we are summing by rows/columns in ROI
     avgs = np.mean(np.array(dir_intensities), axis=0)
     return avgs
 
@@ -204,12 +232,19 @@ def save_avgs(avgs, args):
         Namespace of arguments returned by `collect_args()`
     """
 
+    # going to build a DataFrame with 1 column of averages and an index for easy CSV writing
+
+    # step 1: make avgs into column vector
     avgs = np.reshape(avgs, (avgs.shape[0], -1))
+
+    # step 2: index is columns if we summed over rows, and index is rows if we summed over columns
     if args.sum == 'r':
         idx = pd.Index(data=range(
             args.col_start, args.col_end+1), name='column')
     else:
         idx = pd.Index(data=range(args.row_start, args.row_end+1), name='row')
+
+    # step 3: with column name, put together DF and write to CSV
     df = pd.DataFrame(avgs, index=idx, columns=['average_intensity'])
     df.to_csv(args.out)
 
@@ -223,6 +258,7 @@ def main():
     prelim_check_args(args)
     avgs = compute_avg_intensities(args)
     save_avgs(avgs, args)
+
 
 if __name__ == '__main__':
     main()
