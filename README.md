@@ -2,8 +2,10 @@
 
 ## Dependencies
 * Download Python 3.9.1+ from [here](https://www.python.org/downloads/).
-* Install Python Image Library via [Pillow fork](https://pypi.org/project/Pillow/). This can be done with `pip` (the Python package manager installed with Python) by typing this command in a terminal window:
+* Install [NumPy](https://numpy.org/), [Pandas](https://pandas.pydata.org/), and the Python Image Library via [Pillow fork](https://pypi.org/project/Pillow/). This can be done with `pip` (the Python package manager installed with Python) by typing these commands in a terminal window:
     ```
+    pip install numpy
+    pip install pandas
     pip install pillow
     ```
 
@@ -23,6 +25,8 @@ Make sure that the file types you are interested in have `open` listed right of 
 You can also automate multiple commands (and to make editing parameters easier) by running a batch file if you're on Windows. `experiments.bat` is an example.
 
 For more information on the code, you can download and view `intensity.html` for documentation in a browser.
+
+To receive updates more smoothly, you can install `git` and clone the repository.
 
 ## Built With
 
