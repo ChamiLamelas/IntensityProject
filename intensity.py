@@ -15,7 +15,7 @@ def collect_args():
             Namespace containing the arguments and their values specified by the user.
     """
 
-    parser = ArgumentParser('Intensity Program')
+    parser = ArgumentParser('python intensity.py')
     parser.add_argument(
         'dir', help='path to the directory where files matching \'root\' will be passed into program')
     parser.add_argument(
@@ -232,9 +232,9 @@ def compute_avg_intensities(args):
 def save_avgs(avgs, args):
     """
     Saves the averages returned by `compute_avg_intensities()` to a CSV file with 2 columns.
-    * If `args.sum == 'r'`, the 1st column has the columns of the ROI in `args` and the avg. intensity for each column
-    * If `args.sum == 'c'`, the 1st column has the rows of the ROI in `args` and the avg. intensity for each row
-
+    * If `sum == "r"`, the 1st column (titled `column`) has the columns of the ROI and the 2nd column (titled `average_intensity`) has the average intensity for each column.
+    * If `sum == "c"`, the 1st column (titled `row`) has the rows of the ROI and the 2nd column (titled `average_intensity`) has the average intensity for each row.
+    
     Parameters
     ----------
     avgs : np.ndarray
