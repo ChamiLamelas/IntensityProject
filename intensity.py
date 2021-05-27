@@ -17,7 +17,7 @@ def collect_args():
 
     parser = ArgumentParser('python intensity.py')
     parser.add_argument(
-        'dir', help='path to the directory where files matching \'root\' will be passed into program')
+        'dir', help='path to the directory where files matching root will be passed into program')
     parser.add_argument(
         'root', help='root name of files whose sums will be averaged over (case-sensitive)')
     parser.add_argument('row_start', type=int,
@@ -29,7 +29,7 @@ def collect_args():
     parser.add_argument(
         'col_end', type=int, help='ending column, must be in [row_start,number of columns in image]')
     parser.add_argument(
-        'sum', help='whether you are summing over rows \'r\' or columns \'c\'')
+        'sum', help='whether you are summing over rows \"r\" or columns \"c\"')
     parser.add_argument(
         'out', help='path for the output file. for outputfile format, see docs for save_avgs()')
     args = parser.parse_args()
@@ -62,7 +62,7 @@ def prelim_check_args(args):
             args.col_start, args.col_end))
     if args.sum not in {'r', 'c'}:
         raise ValueError(
-            '\'%s\' is not a valid input, must be \'r\' for rows or \'c\' for columns' % (args.sum))
+            '\"%s\" is not a valid input, must be \"r\" for rows or \"c\" for columns' % (args.sum))
 
 
 def second_check_args(fname, args):
