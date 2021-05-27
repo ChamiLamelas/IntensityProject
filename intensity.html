@@ -45,19 +45,19 @@ def collect_args():
 
     parser = ArgumentParser(&#39;python intensity.py&#39;)
     parser.add_argument(
-        &#39;dir&#39;, help=&#39;path to the directory where files matching \&#39;root\&#39; will be passed into program&#39;)
+        &#39;dir&#39;, help=&#39;path to the directory where files matching root will be passed into program&#39;)
     parser.add_argument(
         &#39;root&#39;, help=&#39;root name of files whose sums will be averaged over (case-sensitive)&#39;)
     parser.add_argument(&#39;row_start&#39;, type=int,
-                        help=&#39;starting row, must be in [1,row_end]&#39;)
+                        help=&#39;starting row, must be an integer in [1,row_end]&#39;)
     parser.add_argument(
-        &#39;row_end&#39;, type=int, help=&#39;ending row, must be in [row_start,number of rows in image]&#39;)
+        &#39;row_end&#39;, type=int, help=&#39;ending row, must be an integer in [row_start,number of rows in image]&#39;)
     parser.add_argument(&#39;col_start&#39;, type=int,
-                        help=&#39;starting column, must be in [1,col_end]&#39;)
+                        help=&#39;starting column, must be an integer in [1,col_end]&#39;)
     parser.add_argument(
-        &#39;col_end&#39;, type=int, help=&#39;ending column, must be in [row_start,number of columns in image]&#39;)
+        &#39;col_end&#39;, type=int, help=&#39;ending column, must be an integer in [row_start,number of columns in image]&#39;)
     parser.add_argument(
-        &#39;sum&#39;, help=&#39;whether you are summing over rows \&#39;r\&#39; or columns \&#39;c\&#39;&#39;)
+        &#39;sum&#39;, help=&#39;whether you are summing over rows \&#34;r\&#34; or columns \&#34;c\&#34;&#39;)
     parser.add_argument(
         &#39;out&#39;, help=&#39;path for the output file. for outputfile format, see docs for save_avgs()&#39;)
     args = parser.parse_args()
@@ -90,7 +90,7 @@ def prelim_check_args(args):
             args.col_start, args.col_end))
     if args.sum not in {&#39;r&#39;, &#39;c&#39;}:
         raise ValueError(
-            &#39;\&#39;%s\&#39; is not a valid input, must be \&#39;r\&#39; for rows or \&#39;c\&#39; for columns&#39; % (args.sum))
+            &#39;\&#34;%s\&#34; is not a valid input, must be \&#34;r\&#34; for rows or \&#34;c\&#34; for columns&#39; % (args.sum))
 
 
 def second_check_args(fname, args):
@@ -210,7 +210,7 @@ def compute_avg_intensities(args):
     Returns
     -------
     avgs : np.ndarray
-        Average itensities for each column if `args.sum == &#39;r&#39;` or for each row if `args.sum == &#39;c&#39;` in the ROIs for the file set described above.
+        Average itensities for each column if `args.sum == &#39;r&#39;` or for each row if `args.sum == &#39;c&#39;` in the ROIs for the file set described above. None if there are no files in `args.dir` that start with `args.root`.
 
     Raises
     ------
@@ -253,8 +253,11 @@ def compute_avg_intensities(args):
     # note, this is independent of with whether we are summing by rows/columns in ROI
     print(&#34;\nComputing mean intensities for %d files&#34; %
           (len(dir_intensities)))
-    avgs = np.mean(np.array(dir_intensities), axis=0)
-    return avgs
+
+    if len(dir_intensities) &gt; 0:
+        avgs = np.mean(np.array(dir_intensities), axis=0)
+        return avgs
+    return None
 
 
 def save_avgs(avgs, args):
@@ -301,7 +304,8 @@ def main():
             args.dir, args.root, args.out, args.row_start, args.row_end, args.col_start, args.col_end, args.sum))
         prelim_check_args(args)
         avgs = compute_avg_intensities(args)
-        save_avgs(avgs, args)
+        if avgs:
+            save_avgs(avgs, args)
     except ValueError as ve:
         print(&#34;Argument error: %s\nFixes: check ROI, sum type arguments&#34; % (str(ve)))
     except AssertionError as ae:
@@ -347,19 +351,19 @@ if __name__ == &#39;__main__&#39;:
 
     parser = ArgumentParser(&#39;python intensity.py&#39;)
     parser.add_argument(
-        &#39;dir&#39;, help=&#39;path to the directory where files matching \&#39;root\&#39; will be passed into program&#39;)
+        &#39;dir&#39;, help=&#39;path to the directory where files matching root will be passed into program&#39;)
     parser.add_argument(
         &#39;root&#39;, help=&#39;root name of files whose sums will be averaged over (case-sensitive)&#39;)
     parser.add_argument(&#39;row_start&#39;, type=int,
-                        help=&#39;starting row, must be in [1,row_end]&#39;)
+                        help=&#39;starting row, must be an integer in [1,row_end]&#39;)
     parser.add_argument(
-        &#39;row_end&#39;, type=int, help=&#39;ending row, must be in [row_start,number of rows in image]&#39;)
+        &#39;row_end&#39;, type=int, help=&#39;ending row, must be an integer in [row_start,number of rows in image]&#39;)
     parser.add_argument(&#39;col_start&#39;, type=int,
-                        help=&#39;starting column, must be in [1,col_end]&#39;)
+                        help=&#39;starting column, must be an integer in [1,col_end]&#39;)
     parser.add_argument(
-        &#39;col_end&#39;, type=int, help=&#39;ending column, must be in [row_start,number of columns in image]&#39;)
+        &#39;col_end&#39;, type=int, help=&#39;ending column, must be an integer in [row_start,number of columns in image]&#39;)
     parser.add_argument(
-        &#39;sum&#39;, help=&#39;whether you are summing over rows \&#39;r\&#39; or columns \&#39;c\&#39;&#39;)
+        &#39;sum&#39;, help=&#39;whether you are summing over rows \&#34;r\&#34; or columns \&#34;c\&#34;&#39;)
     parser.add_argument(
         &#39;out&#39;, help=&#39;path for the output file. for outputfile format, see docs for save_avgs()&#39;)
     args = parser.parse_args()
@@ -379,7 +383,7 @@ if __name__ == &#39;__main__&#39;:
 <h2 id="returns">Returns</h2>
 <dl>
 <dt><strong><code>avgs</code></strong> :&ensp;<code>np.ndarray</code></dt>
-<dd>Average itensities for each column if <code>args.sum == 'r'</code> or for each row if <code>args.sum == 'c'</code> in the ROIs for the file set described above.</dd>
+<dd>Average itensities for each column if <code>args.sum == 'r'</code> or for each row if <code>args.sum == 'c'</code> in the ROIs for the file set described above. None if there are no files in <code>args.dir</code> that start with <code>args.root</code>.</dd>
 </dl>
 <h2 id="raises">Raises</h2>
 <dl>
@@ -404,7 +408,7 @@ if __name__ == &#39;__main__&#39;:
     Returns
     -------
     avgs : np.ndarray
-        Average itensities for each column if `args.sum == &#39;r&#39;` or for each row if `args.sum == &#39;c&#39;` in the ROIs for the file set described above.
+        Average itensities for each column if `args.sum == &#39;r&#39;` or for each row if `args.sum == &#39;c&#39;` in the ROIs for the file set described above. None if there are no files in `args.dir` that start with `args.root`.
 
     Raises
     ------
@@ -447,8 +451,11 @@ if __name__ == &#39;__main__&#39;:
     # note, this is independent of with whether we are summing by rows/columns in ROI
     print(&#34;\nComputing mean intensities for %d files&#34; %
           (len(dir_intensities)))
-    avgs = np.mean(np.array(dir_intensities), axis=0)
-    return avgs</code></pre>
+
+    if len(dir_intensities) &gt; 0:
+        avgs = np.mean(np.array(dir_intensities), axis=0)
+        return avgs
+    return None</code></pre>
 </details>
 </dd>
 <dt id="intensity.compute_img_intensities"><code class="name flex">
@@ -556,7 +563,8 @@ Errors are printed to console as either Argument errors or</p></div>
             args.dir, args.root, args.out, args.row_start, args.row_end, args.col_start, args.col_end, args.sum))
         prelim_check_args(args)
         avgs = compute_avg_intensities(args)
-        save_avgs(avgs, args)
+        if avgs:
+            save_avgs(avgs, args)
     except ValueError as ve:
         print(&#34;Argument error: %s\nFixes: check ROI, sum type arguments&#34; % (str(ve)))
     except AssertionError as ae:
@@ -614,7 +622,7 @@ Errors are printed to console as either Argument errors or</p></div>
             args.col_start, args.col_end))
     if args.sum not in {&#39;r&#39;, &#39;c&#39;}:
         raise ValueError(
-            &#39;\&#39;%s\&#39; is not a valid input, must be \&#39;r\&#39; for rows or \&#39;c\&#39; for columns&#39; % (args.sum))</code></pre>
+            &#39;\&#34;%s\&#34; is not a valid input, must be \&#34;r\&#34; for rows or \&#34;c\&#34; for columns&#39; % (args.sum))</code></pre>
 </details>
 </dd>
 <dt id="intensity.rmv_extra_channels"><code class="name flex">

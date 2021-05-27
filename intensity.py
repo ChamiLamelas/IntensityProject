@@ -182,7 +182,7 @@ def compute_avg_intensities(args):
     Returns
     -------
     avgs : np.ndarray
-        Average itensities for each column if `args.sum == 'r'` or for each row if `args.sum == 'c'` in the ROIs for the file set described above.
+        Average itensities for each column if `args.sum == 'r'` or for each row if `args.sum == 'c'` in the ROIs for the file set described above. None if there are no files in `args.dir` that start with `args.root`.
 
     Raises
     ------
@@ -225,8 +225,11 @@ def compute_avg_intensities(args):
     # note, this is independent of with whether we are summing by rows/columns in ROI
     print("\nComputing mean intensities for %d files" %
           (len(dir_intensities)))
-    avgs = np.mean(np.array(dir_intensities), axis=0)
-    return avgs
+
+    if len(dir_intensities) > 0:
+        avgs = np.mean(np.array(dir_intensities), axis=0)
+        return avgs
+    return None
 
 
 def save_avgs(avgs, args):
@@ -273,7 +276,8 @@ def main():
             args.dir, args.root, args.out, args.row_start, args.row_end, args.col_start, args.col_end, args.sum))
         prelim_check_args(args)
         avgs = compute_avg_intensities(args)
-        save_avgs(avgs, args)
+        if avgs:
+            save_avgs(avgs, args)
     except ValueError as ve:
         print("Argument error: %s\nFixes: check ROI, sum type arguments" % (str(ve)))
     except AssertionError as ae:

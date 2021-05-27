@@ -1,8 +1,6 @@
 # my ignore
-data1/
-data2/
-data3/
-outputs/
+data/
+output/
 test.bat
 docgen.bat
 
