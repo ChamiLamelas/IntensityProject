@@ -21,13 +21,13 @@ def collect_args():
     parser.add_argument(
         'root', help='root name of files whose sums will be averaged over (case-sensitive)')
     parser.add_argument('row_start', type=int,
-                        help='starting row, must be in [1,row_end]')
+                        help='starting row, must be an integer in [1,row_end]')
     parser.add_argument(
-        'row_end', type=int, help='ending row, must be in [row_start,number of rows in image]')
+        'row_end', type=int, help='ending row, must be an integer in [row_start,number of rows in image]')
     parser.add_argument('col_start', type=int,
-                        help='starting column, must be in [1,col_end]')
+                        help='starting column, must be an integer in [1,col_end]')
     parser.add_argument(
-        'col_end', type=int, help='ending column, must be in [row_start,number of columns in image]')
+        'col_end', type=int, help='ending column, must be an integer in [row_start,number of columns in image]')
     parser.add_argument(
         'sum', help='whether you are summing over rows \"r\" or columns \"c\"')
     parser.add_argument(
