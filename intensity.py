@@ -276,7 +276,7 @@ def main():
             args.dir, args.root, args.out, args.row_start, args.row_end, args.col_start, args.col_end, args.sum))
         prelim_check_args(args)
         avgs = compute_avg_intensities(args)
-        if avgs:
+        if avgs is not None:
             save_avgs(avgs, args)
     except ValueError as ve:
         print("Argument error: %s\nFixes: check ROI, sum type arguments" % (str(ve)))
